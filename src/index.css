@@ -19,6 +19,10 @@
   }
 }
 
+.font-ka {
+  font-family: "Gloock", "Playfair Display", Georgia, serif;
+}
+
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
@@ -30,6 +34,26 @@
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
+
+@keyframes kf-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.kf-marquee { animation: kf-marquee 38s linear infinite; }
+
+@keyframes kf-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.kf-float > * { animation: kf-float 4.5s ease-in-out infinite; }
+
+@keyframes kf-ping {
+  0% { box-shadow: 0 0 0 0 rgba(52, 75, 49, 0.45); }
+  70%, 100% { box-shadow: 0 0 0 14px rgba(52, 75, 49, 0); }
+}
+.kf-ping { animation: kf-ping 2.4s ease-out infinite; }
+
+html { -webkit-tap-highlight-color: transparent; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

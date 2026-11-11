@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, ChevronLeft, ChevronRight, Gift, Pause, Play } from 'lucide-react';
 import { SafeImage } from './SafeImage';
+import { WordsReveal } from './Motion';
 
 export interface HeroSlide {
   id: string;
@@ -47,7 +48,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, intervalMs =
 
   return (
     <section
-      className="relative w-full h-[78vh] min-h-[520px] max-h-[820px] overflow-hidden bg-zinc-950 text-white select-none"
+      className="relative w-full h-[86svh] sm:h-[78vh] min-h-[540px] max-h-[820px] overflow-hidden bg-zinc-950 text-white select-none"
       aria-roledescription="carrousel"
       aria-label="Présentation KoraFête"
       tabIndex={0}
@@ -90,7 +91,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, intervalMs =
               <div className="absolute inset-0 bg-gradient-to-br from-amber-900/30 via-transparent to-emerald-950/40 mix-blend-multiply" />
             )}
 
-            <div className="relative z-10 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 sm:pb-16 flex items-center">
+            <div className="relative z-10 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-36 sm:pb-16 flex items-end sm:items-center">
               <div
                 className={`max-w-2xl space-y-5 transition-all duration-700 delay-200 ${
                   active ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
@@ -106,10 +107,10 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, intervalMs =
                     {s.eyebrow}
                   </p>
                 )}
-                <h1 className="text-[clamp(2.2rem,5.2vw,4.4rem)] leading-[1.04] font-semibold">
-                  {s.title}
+                <h1 className="text-[clamp(2.1rem,5.2vw,4.4rem)] leading-[1.06] font-semibold">
+                  {active ? <WordsReveal text={s.title} playKey={`${s.id}-${index}`} /> : s.title}
                 </h1>
-                <p className="text-base sm:text-lg text-stone-200 leading-relaxed max-w-xl">
+                <p className="text-[15px] sm:text-lg text-stone-200 leading-relaxed max-w-xl line-clamp-3 sm:line-clamp-none">
                   {s.subtitle}
                 </p>
                 <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -131,7 +132,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, intervalMs =
                       type="button"
                       onClick={s.onSecondary}
                       tabIndex={active ? 0 : -1}
-                      className="px-6 py-3.5 text-sm font-semibold rounded-full border border-white/40 text-white hover:bg-white/10 transition-colors whitespace-nowrap"
+                      className="hidden sm:inline-flex px-6 py-3.5 text-sm font-semibold rounded-full border border-white/40 text-white hover:bg-white/10 transition-colors whitespace-nowrap"
                     >
                       {s.secondaryLabel}
                     </button>
@@ -166,7 +167,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ slides, intervalMs =
       )}
 
       {/* Indicateurs + pause */}
-      <div className="absolute bottom-20 sm:bottom-28 inset-x-0 z-20">
+      <div className="absolute bottom-24 sm:bottom-28 inset-x-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4">
           <div className="flex items-center gap-2 flex-1 max-w-md">
             {slides.map((s, i) => (

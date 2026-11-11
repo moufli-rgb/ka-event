@@ -8,16 +8,19 @@ import {
   PartyPopper,
   ShieldCheck,
   Sparkles,
-  Truck,
-  PenLine,
+  MapPin,
+  MessageCircle,
   Users,
   Wallet,
 } from 'lucide-react';
-import { CategoryId, EventCategoryMatrix, EventProject, EventTypeId, GiftProduct } from '../types';
+import { CategoryId, EventCategoryMatrix, EventProject, EventTypeId } from '../types';
+import { KA_WHATSAPP } from './KaGiftView';
 import { EVENT_TYPES, SERVICE_CATEGORIES, formatFcfa } from '../data/initialData';
 import { MEDIA } from '../assets/mediaRegistry';
 import { SafeImage } from './SafeImage';
 import { HeroCarousel, HeroSlide } from './HeroCarousel';
+import { AnimatePresence, motion } from 'motion/react';
+import { Marquee, Reveal, Stagger, StaggerItem, staggerItem } from './Motion';
 
 export interface StartPlanningPayload {
   eventTypeId: EventTypeId;
@@ -30,7 +33,6 @@ export interface StartPlanningPayload {
 interface HomeViewProps {
   project: EventProject;
   matrix: EventCategoryMatrix;
-  gifts: GiftProduct[];
   providerCount: number;
   onStartPlanning: (payload: StartPlanningPayload) => void;
   onGoGifts: () => void;
@@ -38,13 +40,39 @@ interface HomeViewProps {
   onOpenPro: (space: 'prestataire' | 'admin') => void;
 }
 
+const KA_FORMULAS = [
+  {
+    code: 'KA-1',
+    name: 'Kā 1',
+    price: 3000,
+    badge: null as string | null,
+    featured: false,
+    perks: ['Sexe & couleur au choix', 'Contenu surprise préparé avec soin', 'Emballage élégant avec ruban'],
+  },
+  {
+    code: 'KA-2',
+    name: 'Kā 2',
+    price: 5000,
+    badge: 'Coup de cœur',
+    featured: true,
+    perks: ['Sexe & couleur au choix', 'Choix des articles selon stock', 'Emballage élégant avec ruban'],
+  },
+  {
+    code: 'KA-3',
+    name: 'Kā 3',
+    price: 10000,
+    badge: 'Livraison offerte',
+    featured: false,
+    perks: ['Sexe & couleur au choix', 'Choix des articles selon stock', 'Mot personnalisé inclus'],
+  },
+];
+
 const BUDGET_MIN = 100000;
 const BUDGET_MAX = 15000000;
 
 export const HomeView: React.FC<HomeViewProps> = ({
   project,
   matrix,
-  gifts,
   providerCount,
   onStartPlanning,
   onGoGifts,
@@ -99,11 +127,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
     {
       id: 's-cadeaux',
       image: MEDIA.giftHamper,
-      eyebrow: 'Boutique Cadeaux KoraFête',
-      title: 'Offrez un cadeau qui marque les esprits.',
+      eyebrow: 'Cadeaux avec Kā',
+      title: 'La calebasse cadeau, réinventée.',
       subtitle:
-        'Coffrets artisanaux, écrin au choix, carte personnalisée et livraison le jour même. Pas besoin d’organiser un événement.',
-      ctaLabel: 'Offrir un cadeau',
+        'Composez votre Kā, ajoutez votre mot doux, validez sur WhatsApp. Dès 3 000 FCFA, retrait gratuit à Cotonou.',
+      ctaLabel: 'Faire ma Kā',
       onCta: onGoGifts,
       highlight: true,
     },
@@ -142,15 +170,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
     { n: 3 as const, label: 'Prestations', icon: Sparkles },
   ];
 
-  const spotlightGifts = gifts.slice(0, 3);
-
   return (
     <>
       <HeroCarousel slides={slides} />
 
       {/* ─── Parcours client en 3 étapes ─── */}
       <section id="demarrer" className="relative z-20 -mt-14 sm:-mt-20 px-4 sm:px-6 lg:px-8 scroll-mt-24">
-        <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl shadow-black/10 border border-stone-200 overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 60 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className="max-w-5xl mx-auto bg-white rounded-2xl shadow-2xl shadow-black/15 border border-stone-200 overflow-hidden"
+        >
           {/* Stepper */}
           <div className="flex items-stretch border-b border-stone-200">
             {steps.map(({ n, label, icon: Icon }) => {
@@ -181,7 +212,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
             })}
           </div>
 
-          <div className="p-5 sm:p-8">
+          <div className="p-5 sm:p-8 overflow-hidden">
+            <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 48 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -48 }}
+              transition={{ duration: 0.32, ease: 'easeOut' }}
+            >
             {step === 1 && (
               <div className="space-y-5">
                 <div>
@@ -192,11 +231,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     On vous propose ensuite uniquement les prestations utiles.
                   </p>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <motion.div
+                  className="grid grid-cols-2 sm:grid-cols-3 gap-3"
+                  initial="hidden"
+                  animate="show"
+                  variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.5 } } }}
+                >
                   {EVENT_TYPES.map((ev) => {
                     const sel = ev.id === eventId;
                     return (
-                      <button
+                      <motion.button
+                        variants={staggerItem}
+                        whileTap={{ scale: 0.96 }}
                         key={ev.id}
                         type="button"
                         onClick={() => pickEvent(ev.id)}
@@ -218,10 +264,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
                             <Check className="w-3.5 h-3.5" />
                           </span>
                         )}
-                      </button>
+                      </motion.button>
                     );
                   })}
-                </div>
+                </motion.div>
               </div>
             )}
 
@@ -378,95 +424,112 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
               </div>
             )}
+            </motion.div>
+            </AnimatePresence>
           </div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* ─── Boutique Cadeaux mise en avant ─── */}
-      <section className="mt-20 sm:mt-24 bg-[#06281F] text-white overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-          <div className="relative">
-            <div className="aspect-[4/5] sm:aspect-[5/4] lg:aspect-[4/5] rounded-2xl overflow-hidden">
-              <SafeImage
-                src={MEDIA.giftHamper}
-                alt="Coffret cadeau KoraFête"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="absolute -bottom-5 left-4 sm:left-auto sm:-right-5 bg-amber-400 text-zinc-950 rounded-2xl px-5 py-4 shadow-xl">
-              <p className="text-[11px] font-bold uppercase tracking-wider">Livré aujourd’hui</p>
-              <p className="text-sm font-semibold">Commandez avant 14h</p>
-            </div>
-          </div>
+      {/* ─── Bandeau défilant ─── */}
+      <Marquee
+        className="mt-16 sm:mt-20 py-5 border-y border-stone-200 bg-white text-xl sm:text-3xl font-display italic text-stone-400"
+        items={[
+          'Mariages',
+          'Anniversaires',
+          'Baptêmes',
+          'Soutenances',
+          'Dots & cérémonies',
+          'Galas',
+          'Cadeaux Kā',
+          'Événements pro',
+        ]}
+      />
 
-          <div className="space-y-7">
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-400/15 text-amber-300 text-xs font-bold uppercase tracking-wider">
-              <Gift className="w-3.5 h-3.5" /> Boutique Cadeaux
+      {/* ─── Kā : boutique cadeaux mise en avant ─── */}
+      <section className="bg-[#344B31] text-[#F4F2EC] overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+          <Reveal className="lg:col-span-5 space-y-6">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F4F2EC]/10 text-[11px] font-semibold uppercase tracking-[0.2em]">
+              <Gift className="w-3.5 h-3.5" /> Nos cadeaux avec Kā
             </span>
-            <h2 className="text-3xl sm:text-5xl font-semibold leading-[1.08]">
-              Faites plaisir, <span className="italic text-amber-300">en trois clics.</span>
+            <h2 className="font-ka text-4xl sm:text-6xl leading-[1.02]">
+              Hier, dans la calebasse.
+              <br />
+              <span className="text-[#D9C79E]">Aujourd’hui, avec Kā.</span>
             </h2>
-            <p className="text-base sm:text-lg text-emerald-100/80 leading-relaxed max-w-lg">
-              Un anniversaire, un mariage, une naissance ou un simple merci : choisissez un coffret, on s’occupe du reste.
+            <p className="text-base sm:text-lg text-[#F4F2EC]/80 leading-relaxed max-w-md">
+              Nos aïeux s’offraient des présents dans la calebasse. Kā garde le geste : vous composez, vous personnalisez, vous validez. Kā s’occupe du reste.
             </p>
-
-            <div className="grid grid-cols-3 gap-3 text-center">
-              {[
-                { icon: Gift, label: 'Coffrets artisanaux' },
-                { icon: PenLine, label: 'Carte personnalisée' },
-                { icon: Truck, label: 'Livraison express' },
-              ].map(({ icon: Icon, label }) => (
-                <div key={label} className="rounded-xl bg-white/5 border border-white/10 px-2 py-4">
-                  <Icon className="w-5 h-5 mx-auto text-amber-300 mb-2" />
-                  <p className="text-xs font-medium text-emerald-50">{label}</p>
-                </div>
-              ))}
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={onGoGifts}
+                className="inline-flex items-center gap-2 px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] bg-[#F4F2EC] text-[#344B31] rounded-full hover:bg-white transition-colors"
+              >
+                Faire ma Kā <ArrowRight className="w-4 h-4" />
+              </button>
+              <a
+                href={KA_WHATSAPP}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-4 text-xs font-semibold rounded-full border border-[#F4F2EC]/30 hover:bg-white/10 transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" /> WhatsApp
+              </a>
             </div>
+          </Reveal>
 
-            <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
-              {spotlightGifts.map((g) => (
+          <div className="lg:col-span-7 space-y-4">
+            <Stagger className="grid grid-cols-1 sm:grid-cols-3 gap-4" gap={0.15}>
+              {KA_FORMULAS.map((f) => (
+                <StaggerItem key={f.code} className={f.featured ? 'kf-float' : ''}>
                 <button
-                  key={g.id}
                   type="button"
                   onClick={onGoGifts}
-                  className="group shrink-0 w-44 rounded-xl bg-white text-zinc-900 overflow-hidden text-left"
+                  className={`relative w-full h-full text-left rounded-2xl p-6 flex flex-col transition-transform hover:-translate-y-1 ${
+                    f.featured
+                      ? 'bg-[#F4F2EC] text-[#344B31] shadow-2xl shadow-black/30'
+                      : 'bg-[#F4F2EC]/[0.06] border border-[#F4F2EC]/15'
+                  }`}
                 >
-                  <div className="h-24 overflow-hidden bg-stone-100">
-                    <SafeImage
-                      src={g.image}
-                      alt={g.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                  <div className="p-3">
-                    <p className="text-xs font-semibold line-clamp-1">{g.name}</p>
-                    <p className="text-sm font-bold text-emerald-900 tabular-nums mt-0.5">
-                      {formatFcfa(g.priceFcfa)}
-                    </p>
-                  </div>
+                  {f.badge && (
+                    <span
+                      className={`absolute -top-3 left-6 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        f.featured ? 'bg-[#344B31] text-[#F4F2EC]' : 'bg-[#D9C79E] text-[#344B31]'
+                      }`}
+                    >
+                      {f.badge}
+                    </span>
+                  )}
+                  <span className="text-[10px] tracking-[0.25em] opacity-60">{f.code}</span>
+                  <span className="font-ka text-3xl mt-1">{f.name}</span>
+                  <span className="text-lg font-semibold tabular-nums mt-1">{formatFcfa(f.price)}</span>
+                  <ul className="mt-4 space-y-1.5 text-xs leading-snug opacity-85 flex-1">
+                    {f.perks.map((p) => (
+                      <li key={p} className="flex gap-1.5">
+                        <Check className="w-3.5 h-3.5 shrink-0 mt-px" /> {p}
+                      </li>
+                    ))}
+                  </ul>
                 </button>
+                </StaggerItem>
               ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={onGoGifts}
-              className="inline-flex items-center gap-2 px-7 py-4 text-sm font-bold bg-amber-400 text-zinc-950 rounded-full hover:bg-amber-300 transition-colors"
-            >
-              Découvrir la boutique ({gifts.length} coffrets)
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            </Stagger>
+            <p className="flex items-center gap-2 text-xs text-[#F4F2EC]/70">
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
+              Retrait gratuit à Orca Déco Jericho (Cotonou), du lundi au samedi de 9h à 19h30 · Validation simple via WhatsApp
+            </p>
           </div>
         </div>
       </section>
 
       {/* ─── Trois espaces ─── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
-        <div className="text-center max-w-xl mx-auto mb-10">
+        <Reveal className="text-center max-w-xl mx-auto mb-10">
           <h2 className="text-2xl sm:text-3xl font-semibold text-zinc-900">Une plateforme, trois espaces</h2>
           <p className="text-sm text-stone-500 mt-2">Chacun accède à son propre espace.</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        </Reveal>
+        <Stagger className="grid grid-cols-1 md:grid-cols-3 gap-5" gap={0.12}>
           {[
             {
               icon: PartyPopper,
@@ -493,9 +556,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
               tone: 'bg-stone-100 text-zinc-800',
             },
           ].map(({ icon: Icon, title, text, cta, onClick, tone }) => (
+            <StaggerItem key={title} className="h-full">
             <div
-              key={title}
-              className="group bg-white border border-stone-200 rounded-2xl p-7 flex flex-col hover:shadow-lg hover:-translate-y-0.5 transition-all"
+              className="group h-full bg-white border border-stone-200 rounded-2xl p-7 flex flex-col hover:shadow-lg hover:-translate-y-0.5 transition-all"
             >
               <span className={`w-12 h-12 rounded-xl flex items-center justify-center ${tone}`}>
                 <Icon className="w-5 h-5" />
@@ -510,8 +573,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 {cta} <ArrowRight className="w-4 h-4" />
               </button>
             </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </section>
     </>
   );

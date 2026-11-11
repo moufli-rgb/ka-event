@@ -9,9 +9,14 @@ import {
   ArrowRight,
   Check,
   Scale,
-  Menu,
   Gift,
+  Home,
+  CalendarHeart,
+  Briefcase,
+  ShoppingBag,
+  ChevronDown,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   BillingMode,
   CategoryId,
@@ -45,11 +50,20 @@ import { SafeImage } from './components/SafeImage';
 import { ProviderDetailModal } from './components/ProviderDetailModal';
 import { ComparatorModal } from './components/ComparatorModal';
 import { BudgetPlannerView } from './components/BudgetPlannerView';
-import { GiftShopView } from './components/GiftShopView';
+import { KaGiftView } from './components/KaGiftView';
+import { BottomTabBar, InstallAppBanner } from './components/MobileApp';
 import { ProAdminSpaces } from './components/ProAdminSpaces';
 import { HomeView, StartPlanningPayload } from './components/HomeView';
 
 type ActiveRoute = 'accueil' | 'organiser' | 'prestataires' | 'cadeaux' | 'budget' | 'pro';
+
+export const NAV_ITEMS = [
+  { id: 'accueil' as const, label: 'Accueil', icon: Home },
+  { id: 'organiser' as const, label: 'Prestataires', icon: Search },
+  { id: 'cadeaux' as const, label: 'Cadeaux Kā', icon: Gift },
+  { id: 'budget' as const, label: 'Mon événement', icon: CalendarHeart },
+  { id: 'pro' as const, label: 'Espace pro', icon: Briefcase },
+];
 
 const STORAGE_PROJECT_KEY = 'korafete_event_project_v1';
 const STORAGE_FAV_KEY = 'korafete_favorites_v1';
@@ -112,7 +126,7 @@ export function App() {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [activeRoute]);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectionDrawerOpen, setSelectionDrawerOpen] = useState(false);
   const [legalModalOpen, setLegalModalOpen] = useState(false);
 
@@ -281,6 +295,11 @@ export function App() {
       dismissedCategories: recommended.filter((c) => !p.selectedCategories.includes(c)),
     }));
     setActiveCategoryFilter('toutes');
+    setActiveRoute('organiser');
+  };
+
+  const handleBrowseAllProviders = () => {
+    handleSelectEventType(null);
     setActiveRoute('organiser');
   };
 
@@ -595,22 +614,21 @@ export function App() {
   // Render Catalog Grid (shared by 'organiser' smart view and 'prestataires' full directory)
   const renderProviderMarketplace = (isFullDirectoryMode: boolean) => (
     <section id="catalogue-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
-      {/* Event Selector Bar (Smart Filtering Principle) */}
-      <div className="space-y-4">
+      {/* En-tête simple */}
+      <div className="space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-medium text-emerald-800 mb-1">
-              {isFullDirectoryMode
-                ? 'Annuaire ouvert · Accès libre à toutes les catégories'
-                : 'Filtrage intelligent par événement · Personnalisable en toute liberté'}
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800 mb-2">
+              Prestataires
             </p>
-            <h2 className="text-2xl sm:text-3xl font-semibold text-zinc-900">
-              {isFullDirectoryMode
-                ? 'Tous nos prestataires événementiels'
-                : currentEventConfig
-                  ? `Services sélectionnés pour : ${currentEventConfig.label}`
-                  : 'Catalogue complet tous événements'}
-            </h2>
+            <h1 className="text-3xl sm:text-4xl font-semibold text-zinc-900">
+              {currentEventConfig && !project.showFullCatalog && !isFullDirectoryMode
+                ? `Pour votre ${currentEventConfig.label.toLowerCase()}`
+                : 'Trouvez vos prestataires'}
+            </h1>
+            <p className="text-sm text-stone-500 mt-2 max-w-xl">
+              Choisissez votre événement, puis ce dont vous avez besoin. Touchez une carte pour voir les prix et réserver.
+            </p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -618,19 +636,10 @@ export function App() {
               <button
                 type="button"
                 onClick={() => setComparatorOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-zinc-900 text-white rounded-full hover:bg-zinc-800 transition-colors whitespace-nowrap shrink-0"
               >
                 <Scale className="w-3.5 h-3.5" />
                 Comparer ({compareIds.length})
-              </button>
-            )}
-            {!isFullDirectoryMode && !project.showFullCatalog && (
-              <button
-                type="button"
-                onClick={() => handleSelectEventType(null)}
-                className="text-xs font-medium text-stone-600 hover:text-zinc-900 underline whitespace-nowrap shrink-0"
-              >
-                Voir tout sans filtrer par événement
               </button>
             )}
           </div>
@@ -638,7 +647,18 @@ export function App() {
 
         {/* Event Pills/Buttons Row */}
         {!isFullDirectoryMode && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
+            <button
+              type="button"
+              onClick={() => handleSelectEventType(null)}
+              className={`px-4 py-2.5 text-xs font-semibold rounded-full border transition-colors whitespace-nowrap shrink-0 ${
+                project.showFullCatalog || !project.eventTypeId
+                  ? 'bg-zinc-900 text-white border-zinc-900'
+                  : 'bg-white text-zinc-700 border-stone-200 hover:bg-stone-50'
+              }`}
+            >
+              Tous
+            </button>
             {EVENT_TYPES.map((ev) => {
               const selected = project.eventTypeId === ev.id && !project.showFullCatalog;
               return (
@@ -646,7 +666,7 @@ export function App() {
                   key={ev.id}
                   type="button"
                   onClick={() => handleSelectEventType(ev.id)}
-                  className={`px-4 py-2.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 ${
+                  className={`px-4 py-2.5 text-xs font-semibold rounded-full border transition-colors whitespace-nowrap shrink-0 ${
                     selected
                       ? 'bg-[#065F46] text-white border-[#065F46]'
                       : 'bg-white text-zinc-700 border-stone-200 hover:bg-stone-50'
@@ -660,7 +680,8 @@ export function App() {
         )}
 
         {/* Recommended Categories + Freedom to Remove or Add Optional Services */}
-        <div className="p-5 rounded-xl bg-white border border-stone-200 space-y-4">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 space-y-4">
+          <p className="text-xs font-semibold text-stone-500">Ce dont vous avez besoin</p>
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -671,7 +692,7 @@ export function App() {
                   : 'bg-stone-100 text-stone-700 hover:bg-stone-200/70'
               }`}
             >
-              Toutes les catégories pertinentes ({smartCategoryBuckets.visibleCategories.length})
+              Tout ({smartCategoryBuckets.visibleCategories.length})
             </button>
 
             {smartCategoryBuckets.visibleCategories.map((cat) => {
@@ -711,7 +732,7 @@ export function App() {
           {!isFullDirectoryMode && smartCategoryBuckets.optionalSuggestions.length > 0 && (
             <div className="pt-3 border-t border-stone-100 flex flex-wrap items-center gap-2 text-xs">
               <span className="text-stone-500 mr-1">
-                Ajouter un besoin facultatif à cet événement :
+                Ajouter aussi :
               </span>
               {smartCategoryBuckets.optionalSuggestions.map((optCat) => (
                 <button
@@ -728,19 +749,33 @@ export function App() {
           )}
 
           {/* Search, City, Billing Unit & Sort Toolbar */}
-          <div className="pt-3 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
-            <div className="lg:col-span-5 relative">
+          <div className="pt-3 border-t border-stone-100 flex items-center gap-2">
+            <div className="relative flex-1">
               <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Rechercher un service précis (traiteur, toge, gâteau, m²...)"
-                className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-[#FAF9F6] border border-stone-200 rounded-lg focus:outline-none focus:border-emerald-800"
+                placeholder="Rechercher : traiteur, gâteau, salle…"
+                className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#FAF9F6] border border-stone-200 rounded-full focus:outline-none focus:border-emerald-800"
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-full border transition-colors shrink-0 ${
+                filtersOpen ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white border-stone-200 text-zinc-700'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              Filtres
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
 
-            <div className="lg:col-span-2">
+          {filtersOpen && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
               <select
                 value={cityFilter}
                 onChange={(e) => setCityFilter(e.target.value)}
@@ -755,13 +790,13 @@ export function App() {
               </select>
             </div>
 
-            <div className="lg:col-span-3">
+            <div>
               <select
                 value={billingFilter}
                 onChange={(e) => setBillingFilter(e.target.value as BillingMode | 'tous')}
                 className="w-full px-3 py-2 text-xs sm:text-sm bg-[#FAF9F6] border border-stone-200 rounded-lg"
               >
-                <option value="tous">Tous modes de facturation</option>
+                <option value="tous">Tous les types de prix</option>
                 {Object.entries(BILLING_MODE_LABELS).map(([k, label]) => (
                   <option key={k} value={k}>
                     {label}
@@ -770,18 +805,19 @@ export function App() {
               </select>
             </div>
 
-            <div className="lg:col-span-2">
+            <div>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                 className="w-full px-3 py-2 text-xs sm:text-sm bg-[#FAF9F6] border border-stone-200 rounded-lg"
               >
-                <option value="pertinence">Tri : Pertinence</option>
-                <option value="prix_asc">Tri : Tarif croissant</option>
-                <option value="avis_desc">Tri : Avis clients</option>
+                <option value="pertinence">Trier : recommandés</option>
+                <option value="prix_asc">Trier : moins cher</option>
+                <option value="avis_desc">Trier : mieux notés</option>
               </select>
             </div>
           </div>
+          )}
         </div>
       </div>
 
@@ -948,116 +984,80 @@ export function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF9F6] text-zinc-900">
-      {/* Strict 3-Zone Top Bar Contract */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xs border-b border-stone-200">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-8 px-4 sm:px-6 lg:px-8 h-16">
-          {/* Zone 1: Single Wordmark */}
+      {/* Barre du haut */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200/80 pt-[env(safe-area-inset-top)]">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-6 px-4 sm:px-6 lg:px-8 h-16">
           <a
             href="#accueil"
             onClick={(e) => {
               e.preventDefault();
               setActiveRoute('accueil');
             }}
-            className="font-display text-xl font-bold tracking-tight text-zinc-900 whitespace-nowrap shrink-0"
+            className="flex items-center gap-2 font-display text-xl font-bold tracking-tight text-zinc-900 whitespace-nowrap shrink-0"
           >
+            <img src="/icons/icon-192.png" alt="" className="w-8 h-8 rounded-lg" />
             KoraFête
           </a>
 
-          {/* Zone 2: 5 Clean Single-Line Text Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-stone-600">
-            {[
-              { id: 'accueil' as const, label: 'Accueil' },
-              { id: 'organiser' as const, label: 'Organiser' },
-              { id: 'prestataires' as const, label: 'Prestataires' },
-              { id: 'budget' as const, label: 'Mon Budget' },
-              { id: 'pro' as const, label: 'Espace Pro' },
-            ].map((nav) => (
-              <a
-                key={nav.id}
-                href={`#${nav.id}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setActiveRoute(nav.id);
-                }}
-                className={`py-1 border-b-2 transition-colors whitespace-nowrap shrink-0 ${
-                  activeRoute === nav.id
-                    ? 'border-emerald-800 text-zinc-900 font-semibold'
-                    : 'border-transparent hover:text-zinc-900 hover:border-stone-300'
-                }`}
-              >
-                {nav.label}
-              </a>
-            ))}
-            <a
-              href="#cadeaux"
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveRoute('cadeaux');
-              }}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-semibold transition-colors whitespace-nowrap shrink-0 ${
-                activeRoute === 'cadeaux'
-                  ? 'bg-amber-400 text-zinc-950'
-                  : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
-              }`}
-            >
-              <Gift className="w-3.5 h-3.5" />
-              Cadeaux
-            </a>
+          <nav className="hidden md:flex items-center gap-1 text-sm font-medium text-stone-600">
+            {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
+              const active = activeRoute === id || (id === 'organiser' && activeRoute === 'prestataires');
+              const isKa = id === 'cadeaux';
+              return (
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveRoute(id);
+                  }}
+                  className={`relative inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-colors whitespace-nowrap ${
+                    isKa
+                      ? active
+                        ? 'bg-[#344B31] text-[#F4F2EC] font-semibold'
+                        : 'bg-[#344B31]/10 text-[#344B31] font-semibold hover:bg-[#344B31]/20'
+                      : active
+                        ? 'text-zinc-900 font-semibold'
+                        : 'hover:text-zinc-900 hover:bg-stone-100'
+                  }`}
+                >
+                  {active && !isKa && (
+                    <motion.span
+                      layoutId="nav-pill"
+                      className="absolute inset-0 rounded-full bg-stone-100"
+                      transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                    />
+                  )}
+                  <Icon className="relative w-4 h-4" />
+                  <span className="relative">{label}</span>
+                </a>
+              );
+            })}
           </nav>
 
-          {/* Zone 3: 1 Primary Action (+ Mobile Hamburger) */}
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={() => setSelectionDrawerOpen(true)}
-              className="px-4 py-2 text-xs font-semibold text-white bg-[#065F46] rounded-lg hover:bg-[#064E3B] transition-colors whitespace-nowrap shrink-0 tabular-nums"
+          <button
+            type="button"
+            onClick={() => setSelectionDrawerOpen(true)}
+            className="relative inline-flex items-center gap-2 px-3 sm:px-4 py-2 text-xs font-semibold text-white bg-[#065F46] rounded-full hover:bg-[#064E3B] transition-colors whitespace-nowrap shrink-0"
+            aria-label={`Ma sélection (${totalSelectionCount})`}
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span className="hidden sm:inline">Ma sélection</span>
+            <motion.span
+              key={totalSelectionCount}
+              initial={{ scale: 1.6 }}
+              animate={{ scale: 1 }}
+              className="min-w-5 h-5 px-1 rounded-full bg-white text-[#065F46] text-[11px] flex items-center justify-center tabular-nums"
             >
-              Ma Sélection ({totalSelectionCount})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              className="md:hidden p-2 text-zinc-700 rounded-lg hover:bg-stone-100"
-              aria-label="Ouvrir le menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
+              {totalSelectionCount}
+            </motion.span>
+          </button>
         </div>
-
-        {/* Mobile Nav Drawer */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-stone-200 bg-white px-4 py-3 flex flex-col gap-2">
-            {[
-              { id: 'accueil' as const, label: 'Accueil' },
-              { id: 'cadeaux' as const, label: '🎁 Boutique Cadeaux' },
-              { id: 'organiser' as const, label: 'Organiser un événement' },
-              { id: 'prestataires' as const, label: 'Catalogue Prestataires' },
-              { id: 'budget' as const, label: 'Mon Budget & Devis' },
-              { id: 'pro' as const, label: 'Espace Prestataire & Admin' },
-            ].map((nav) => (
-              <button
-                key={nav.id}
-                type="button"
-                onClick={() => {
-                  setActiveRoute(nav.id);
-                  setMobileMenuOpen(false);
-                }}
-                className={`text-left px-3 py-2 rounded-lg text-sm font-medium ${
-                  activeRoute === nav.id ? 'bg-stone-100 text-zinc-900' : 'text-stone-600'
-                }`}
-              >
-                {nav.label}
-              </button>
-            ))}
-          </div>
-        )}
       </header>
 
       {/* Toast Feedback */}
       {toastMsg && (
-        <div className="fixed bottom-5 right-5 z-50 max-w-sm bg-zinc-900 text-white px-4 py-3 rounded-lg shadow-lg text-xs sm:text-sm font-medium flex items-center gap-3">
+        <div className="fixed bottom-24 md:bottom-5 left-4 right-4 md:left-auto md:right-5 z-50 md:max-w-sm bg-zinc-900 text-white px-4 py-3 rounded-lg shadow-lg text-xs sm:text-sm font-medium flex items-center gap-3">
           <span>{toastMsg}</span>
           <button
             type="button"
@@ -1072,15 +1072,22 @@ export function App() {
 
       {/* Main Content Router */}
       <main className="flex-1">
+        <AnimatePresence mode="wait">
+        <motion.div
+          key={activeRoute}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+        >
         {activeRoute === 'accueil' && (
           <HomeView
             project={project}
             matrix={matrix}
-            gifts={gifts}
             providerCount={providers.length}
             onStartPlanning={handleStartPlanning}
             onGoGifts={() => setActiveRoute('cadeaux')}
-            onGoProviders={() => setActiveRoute('prestataires')}
+            onGoProviders={handleBrowseAllProviders}
             onOpenPro={(space) => {
               setProSpace(space);
               setActiveRoute('pro');
@@ -1092,17 +1099,7 @@ export function App() {
 
         {activeRoute === 'prestataires' && renderProviderMarketplace(true)}
 
-        {activeRoute === 'cadeaux' && (
-          <GiftShopView
-            gifts={gifts}
-            cart={giftCart}
-            orders={giftOrders}
-            onAddToCart={handleAddGiftToCart}
-            onUpdateCartQty={handleUpdateGiftQty}
-            onRemoveCartItem={handleRemoveGiftCartItem}
-            onPlaceOrder={handlePlaceGiftOrder}
-          />
-        )}
+        {activeRoute === 'cadeaux' && <KaGiftView />}
 
         {activeRoute === 'budget' && (
           <BudgetPlannerView
@@ -1137,10 +1134,12 @@ export function App() {
             onResolveReport={handleResolveReport}
           />
         )}
+        </motion.div>
+        </AnimatePresence>
       </main>
 
-      {/* Clean Minimal Footer */}
-      <footer className="border-t border-stone-200 bg-white py-8">
+      {/* Pied de page */}
+      <footer className={`border-t border-stone-200 bg-white py-8 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-8 ${activeRoute === 'cadeaux' ? 'hidden md:block' : ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-500">
           <div className="flex items-center gap-3">
             <span className="font-display text-base font-bold text-zinc-900">KoraFête</span>
@@ -1180,6 +1179,13 @@ export function App() {
           </div>
         </div>
       </footer>
+
+      <InstallAppBanner />
+      <BottomTabBar
+        items={NAV_ITEMS}
+        active={activeRoute === 'prestataires' ? 'organiser' : activeRoute}
+        onSelect={(id) => setActiveRoute(id as ActiveRoute)}
+      />
 
       {/* Provider Detail Modal */}
       {activeProviderModal && (

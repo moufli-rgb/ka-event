@@ -179,47 +179,50 @@ export const BudgetPlannerView: React.FC<BudgetPlannerViewProps> = ({
       {/* Header & Client Workspace Switcher */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
-          <p className="text-xs text-stone-500 mb-1">
-            Espace Client · Sauvegarde automatique sur cet appareil
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800 mb-2">
+            Mon événement
           </p>
-          <h1 className="text-3xl font-semibold text-zinc-900">
-            Mon Projet Événementiel & Budget
+          <h1 className="text-3xl sm:text-4xl font-semibold text-zinc-900">
+            Suivez votre budget, simplement
           </h1>
+          <p className="text-sm text-stone-500 mt-2 max-w-xl">
+            Retrouvez ici les prestations ajoutées, vos demandes de devis et vos prestataires favoris. Tout est enregistré automatiquement.
+          </p>
         </div>
 
-        <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-lg w-fit">
+        <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-full w-fit max-w-full overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setSubView('budget')}
-            className={`px-3.5 py-2 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 text-xs font-semibold rounded-full transition-colors whitespace-nowrap shrink-0 ${
               subView === 'budget'
                 ? 'bg-white text-zinc-900 shadow-xs'
                 : 'text-stone-600 hover:text-zinc-900'
             }`}
           >
-            Simulateur de Budget ({project.items.length})
+            Mon budget ({project.items.length})
           </button>
           <button
             type="button"
             onClick={() => setSubView('demandes')}
-            className={`px-3.5 py-2 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 text-xs font-semibold rounded-full transition-colors whitespace-nowrap shrink-0 ${
               subView === 'demandes'
                 ? 'bg-white text-zinc-900 shadow-xs'
                 : 'text-stone-600 hover:text-zinc-900'
             }`}
           >
-            Demandes & Réservations ({inquiries.length})
+            Mes demandes ({inquiries.length})
           </button>
           <button
             type="button"
             onClick={() => setSubView('favoris')}
-            className={`px-3.5 py-2 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 text-xs font-semibold rounded-full transition-colors whitespace-nowrap shrink-0 ${
               subView === 'favoris'
                 ? 'bg-white text-zinc-900 shadow-xs'
                 : 'text-stone-600 hover:text-zinc-900'
             }`}
           >
-            Prestataires Favoris ({favoriteProviders.length})
+            Mes favoris ({favoriteProviders.length})
           </button>
         </div>
       </div>
@@ -229,7 +232,7 @@ export const BudgetPlannerView: React.FC<BudgetPlannerViewProps> = ({
           {/* Event Parameters Bar */}
           <section className="p-6 rounded-xl bg-white border border-stone-200 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-zinc-900">Paramètres de votre événement</h2>
+              <h2 className="text-lg font-semibold text-zinc-900">Mon événement en bref</h2>
               <span className="text-xs text-stone-500">Modifiable à tout moment</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

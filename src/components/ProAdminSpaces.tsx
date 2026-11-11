@@ -139,38 +139,41 @@ export const ProAdminSpaces: React.FC<ProAdminSpacesProps> = ({
       {/* Header & Role Switcher */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
-          <p className="text-xs text-stone-500 mb-1">
-            Gestion professionnelle & Gouvernance de la marketplace
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800 mb-2">
+            Espace pro
           </p>
-          <h1 className="text-3xl font-semibold text-zinc-900">
-            {activeSpace === 'prestataire'
-              ? 'Espace Prestataire — Vitrine, Tarifs & Abonnement'
-              : 'Administration Centrale — Filtrage, Vérification & Stocks'}
+          <h1 className="text-3xl sm:text-4xl font-semibold text-zinc-900">
+            {activeSpace === 'prestataire' ? 'Mon espace prestataire' : 'Administration'}
           </h1>
+          <p className="text-sm text-stone-500 mt-2 max-w-xl">
+            {activeSpace === 'prestataire'
+              ? 'Gérez votre profil, publiez vos prestations avec leurs prix et répondez aux demandes des clients.'
+              : 'Vérifiez les prestataires, choisissez les prestations proposées pour chaque événement et traitez les signalements.'}
+          </p>
         </div>
 
-        <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-lg w-fit">
+        <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-full w-fit max-w-full overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveSpace('prestataire')}
-            className={`px-4 py-2 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 text-xs font-semibold rounded-full transition-colors whitespace-nowrap shrink-0 ${
               activeSpace === 'prestataire'
                 ? 'bg-white text-zinc-900 shadow-xs'
                 : 'text-stone-600 hover:text-zinc-900'
             }`}
           >
-            Vue Prestataire
+            Je suis prestataire
           </button>
           <button
             type="button"
             onClick={() => setActiveSpace('admin')}
-            className={`px-4 py-2 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 text-xs font-semibold rounded-full transition-colors whitespace-nowrap shrink-0 ${
               activeSpace === 'admin'
                 ? 'bg-white text-zinc-900 shadow-xs'
                 : 'text-stone-600 hover:text-zinc-900'
             }`}
           >
-            Administration Centrale
+            Je suis administrateur
           </button>
         </div>
       </div>
