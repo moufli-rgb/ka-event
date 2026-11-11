@@ -10,6 +10,7 @@ import {
   Check,
   Scale,
   Menu,
+  Gift,
 } from 'lucide-react';
 import {
   BillingMode,
@@ -46,8 +47,9 @@ import { ComparatorModal } from './components/ComparatorModal';
 import { BudgetPlannerView } from './components/BudgetPlannerView';
 import { GiftShopView } from './components/GiftShopView';
 import { ProAdminSpaces } from './components/ProAdminSpaces';
+import { HomeView, StartPlanningPayload } from './components/HomeView';
 
-type ActiveRoute = 'organiser' | 'prestataires' | 'cadeaux' | 'budget' | 'pro';
+type ActiveRoute = 'accueil' | 'organiser' | 'prestataires' | 'cadeaux' | 'budget' | 'pro';
 
 const STORAGE_PROJECT_KEY = 'korafete_event_project_v1';
 const STORAGE_FAV_KEY = 'korafete_favorites_v1';
@@ -104,7 +106,12 @@ const DEFAULT_PROJECT: EventProject = {
 };
 
 export function App() {
-  const [activeRoute, setActiveRoute] = useState<ActiveRoute>('organiser');
+  const [activeRoute, setActiveRoute] = useState<ActiveRoute>('accueil');
+  const [proSpace, setProSpace] = useState<'prestataire' | 'admin'>('prestataire');
+
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [activeRoute]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectionDrawerOpen, setSelectionDrawerOpen] = useState(false);
   const [legalModalOpen, setLegalModalOpen] = useState(false);
@@ -257,6 +264,24 @@ export function App() {
       dismissedCategories: [],
     }));
     setActiveCategoryFilter('toutes');
+  };
+
+  const handleStartPlanning = (p: StartPlanningPayload) => {
+    const recommended = SERVICE_CATEGORIES.filter(
+      (c) => matrix[p.eventTypeId][c.id] === 'recommandee'
+    ).map((c) => c.id);
+    setProject((prev) => ({
+      ...prev,
+      eventTypeId: p.eventTypeId,
+      guestCount: p.guestCount,
+      targetBudgetFcfa: p.targetBudgetFcfa,
+      eventDate: p.eventDate,
+      showFullCatalog: false,
+      customAddedCategories: p.selectedCategories.filter((c) => !recommended.includes(c)),
+      dismissedCategories: recommended.filter((c) => !p.selectedCategories.includes(c)),
+    }));
+    setActiveCategoryFilter('toutes');
+    setActiveRoute('organiser');
   };
 
   const handleDismissCategory = (catId: CategoryId) => {
@@ -928,10 +953,10 @@ export function App() {
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-8 px-4 sm:px-6 lg:px-8 h-16">
           {/* Zone 1: Single Wordmark */}
           <a
-            href="#organiser"
+            href="#accueil"
             onClick={(e) => {
               e.preventDefault();
-              setActiveRoute('organiser');
+              setActiveRoute('accueil');
             }}
             className="font-display text-xl font-bold tracking-tight text-zinc-900 whitespace-nowrap shrink-0"
           >
@@ -941,11 +966,11 @@ export function App() {
           {/* Zone 2: 5 Clean Single-Line Text Navigation Links */}
           <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-stone-600">
             {[
+              { id: 'accueil' as const, label: 'Accueil' },
               { id: 'organiser' as const, label: 'Organiser' },
               { id: 'prestataires' as const, label: 'Prestataires' },
-              { id: 'cadeaux' as const, label: 'Boutique Cadeaux' },
               { id: 'budget' as const, label: 'Mon Budget' },
-              { id: 'pro' as const, label: 'Espaces Pro' },
+              { id: 'pro' as const, label: 'Espace Pro' },
             ].map((nav) => (
               <a
                 key={nav.id}
@@ -963,6 +988,21 @@ export function App() {
                 {nav.label}
               </a>
             ))}
+            <a
+              href="#cadeaux"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveRoute('cadeaux');
+              }}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                activeRoute === 'cadeaux'
+                  ? 'bg-amber-400 text-zinc-950'
+                  : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+              }`}
+            >
+              <Gift className="w-3.5 h-3.5" />
+              Cadeaux
+            </a>
           </nav>
 
           {/* Zone 3: 1 Primary Action (+ Mobile Hamburger) */}
@@ -990,9 +1030,10 @@ export function App() {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-stone-200 bg-white px-4 py-3 flex flex-col gap-2">
             {[
+              { id: 'accueil' as const, label: 'Accueil' },
+              { id: 'cadeaux' as const, label: '🎁 Boutique Cadeaux' },
               { id: 'organiser' as const, label: 'Organiser un événement' },
               { id: 'prestataires' as const, label: 'Catalogue Prestataires' },
-              { id: 'cadeaux' as const, label: 'Boutique Cadeaux' },
               { id: 'budget' as const, label: 'Mon Budget & Devis' },
               { id: 'pro' as const, label: 'Espace Prestataire & Admin' },
             ].map((nav) => (
@@ -1031,205 +1072,23 @@ export function App() {
 
       {/* Main Content Router */}
       <main className="flex-1">
-        {activeRoute === 'organiser' && (
-          <>
-            {/* Section 1: Editorial Split Hero */}
-            <section className="border-b border-stone-200 bg-white">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
-                  {/* Left Column: Campaign Copy + Central Event Configurator */}
-                  <div className="lg:col-span-6 flex flex-col justify-between space-y-6">
-                    <div className="space-y-4">
-                      <p className="text-xs font-medium text-stone-500">
-                        Abidjan · Dakar · Cotonou · Douala · Lomé
-                      </p>
-                      <h1 className="text-[clamp(2.15rem,3.6vw,3.35rem)] leading-[1.12] font-semibold text-zinc-900">
-                        Chaque célébration mérite les bons artisans, au juste prix.
-                      </h1>
-                      <p className="text-base text-stone-600 leading-relaxed max-w-xl">
-                        Choisissez votre événement pour découvrir automatiquement les services adaptés, comparer les tarifs réels en FCFA, construire votre budget prévisionnel ou offrir un coffret cadeau.
-                      </p>
-                    </div>
-
-                    {/* Interactive Quick Event Launcher */}
-                    <div className="p-5 rounded-xl bg-[#FAF9F6] border border-stone-200 space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className="sm:col-span-1">
-                          <label className="block text-xs font-medium text-stone-600 mb-1">
-                            Votre événement
-                          </label>
-                          <select
-                            value={project.eventTypeId || 'mariage'}
-                            onChange={(e) => handleSelectEventType(e.target.value as EventTypeId)}
-                            className="w-full px-3 py-2 text-sm bg-white border border-stone-300 rounded-lg focus:outline-none focus:border-emerald-800"
-                          >
-                            {EVENT_TYPES.map((ev) => (
-                              <option key={ev.id} value={ev.id}>
-                                {ev.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-stone-600 mb-1">
-                            Nombre d’invités
-                          </label>
-                          <input
-                            type="number"
-                            min={10}
-                            value={project.guestCount}
-                            onChange={(e) =>
-                              setProject((p) => ({
-                                ...p,
-                                guestCount: Math.max(10, Number(e.target.value) || 50),
-                              }))
-                            }
-                            className="w-full px-3 py-2 text-sm bg-white border border-stone-300 rounded-lg tabular-nums focus:outline-none focus:border-emerald-800"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-stone-600 mb-1">
-                            Budget indicatif (FCFA)
-                          </label>
-                          <input
-                            type="number"
-                            step={50000}
-                            value={project.targetBudgetFcfa}
-                            onChange={(e) =>
-                              setProject((p) => ({
-                                ...p,
-                                targetBudgetFcfa: Math.max(50000, Number(e.target.value) || 500000),
-                              }))
-                            }
-                            className="w-full px-3 py-2 text-sm bg-white border border-stone-300 rounded-lg tabular-nums focus:outline-none focus:border-emerald-800"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-3">
-                        <a
-                          href="#catalogue-section"
-                          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-[#065F46] text-white rounded-lg hover:bg-[#064E3B] transition-colors whitespace-nowrap"
-                        >
-                          Découvrir les services adaptés
-                          <ArrowRight className="w-4 h-4" />
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => setActiveRoute('cadeaux')}
-                          className="px-4 py-2.5 text-sm font-medium bg-white text-zinc-900 border border-stone-300 rounded-lg hover:bg-stone-50 transition-colors whitespace-nowrap"
-                        >
-                          Acheter un cadeau sans événement
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Stretched High-Resolution Reception Photography */}
-                  <div className="lg:col-span-6 relative rounded-xl overflow-hidden min-h-[320px] lg:min-h-[440px] border border-stone-200">
-                    <SafeImage
-                      src={MEDIA.heroReception}
-                      alt="Réception de mariage et gala dans une cour architecturale illuminée"
-                      className="w-full h-full object-cover lg:h-full"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-6 text-white">
-                      <p className="text-xs text-stone-200 mb-1">
-                        Réalisation vérifiée · Réception 240 convives à Cocody
-                      </p>
-                      <p className="font-display text-lg sm:text-xl font-medium">
-                        Des tarifs détaillés à l’invité, au m², à l’heure ou au forfait — sans mauvaise surprise.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Section 2: Smart Event-Filtered Marketplace */}
-            {renderProviderMarketplace(false)}
-
-            {/* Section 3: Independent Gift Boutique Spotlight & Attributable Proof */}
-            <section className="border-t border-stone-200 bg-white py-14">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-emerald-800">
-                      Boutique de Cadeaux KoraFête
-                    </p>
-                    <h2 className="text-2xl sm:text-3xl font-semibold text-zinc-900">
-                      Un anniversaire, un mariage ou un remerciement ? Offrez dès aujourd’hui
-                    </h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveRoute('cadeaux')}
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-900 hover:underline whitespace-nowrap shrink-0"
-                  >
-                    Explorer toute la boutique ({gifts.length} coffrets)
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
-                  {gifts.slice(0, 3).map((gift) => (
-                    <div
-                      key={gift.id}
-                      onClick={() => setActiveRoute('cadeaux')}
-                      className="group bg-[#FAF9F6] border border-stone-200 rounded-xl overflow-hidden cursor-pointer hover:-translate-y-0.5 transition-transform"
-                    >
-                      <div className="aspect-[4/3] w-full overflow-hidden bg-stone-100">
-                        <SafeImage src={gift.image} alt={gift.name} />
-                      </div>
-                      <div className="p-5 space-y-2">
-                        <p className="text-xs text-stone-500">
-                          {gift.occasionLabel} · {gift.stock} en stock
-                        </p>
-                        <h3 className="text-base font-semibold text-zinc-900 group-hover:text-emerald-900">
-                          {gift.name}
-                        </h3>
-                        <p className="text-sm font-bold text-zinc-900 tabular-nums pt-1">
-                          {formatFcfa(gift.priceFcfa)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Attributable Client Proof Adjacent to Value Proposition */}
-                <div className="pt-8 border-t border-stone-200 grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="p-5 rounded-xl bg-[#FAF9F6] border border-stone-200 space-y-2">
-                    <p className="text-sm text-stone-700 leading-relaxed">
-                      « Pour ma soutenance de médecine à Abidjan, le filtrage m’a tout de suite proposé l’imprimeur 24h, la location de toge et le cocktail 50 personnes sans me noyer sous les offres de mariage. »
-                    </p>
-                    <p className="text-xs font-semibold text-zinc-900 pt-1">
-                      Dr. Marc-Antoine Bamba · Soutenance CHU Cocody (Budget respecté à 410 000 FCFA)
-                    </p>
-                  </div>
-
-                  <div className="p-5 rounded-xl bg-[#FAF9F6] border border-stone-200 space-y-2">
-                    <p className="text-sm text-stone-700 leading-relaxed">
-                      « Le comparateur côte à côte nous a permis de voir qu’une salle aux Almadies n’appliquait aucun droit de bouchon, économisant 380 000 FCFA sur notre réception familiale. »
-                    </p>
-                    <p className="text-xs font-semibold text-zinc-900 pt-1">
-                      Fatou Ndiaye · Baptême 90 invités à Dakar
-                    </p>
-                  </div>
-
-                  <div className="p-5 rounded-xl bg-[#FAF9F6] border border-stone-200 space-y-2">
-                    <p className="text-sm text-stone-700 leading-relaxed">
-                      « En tant que cheffe pâtissière, pouvoir afficher mes tarifs à la part pour les wedding cakes et au forfait pour les anniversaires m’évite des dizaines d’appels non qualifiés. »
-                    </p>
-                    <p className="text-xs font-semibold text-zinc-900 pt-1">
-                      L’Atelier Vanille & Cacao · Prestataire vérifié KoraFête
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </>
+        {activeRoute === 'accueil' && (
+          <HomeView
+            project={project}
+            matrix={matrix}
+            gifts={gifts}
+            providerCount={providers.length}
+            onStartPlanning={handleStartPlanning}
+            onGoGifts={() => setActiveRoute('cadeaux')}
+            onGoProviders={() => setActiveRoute('prestataires')}
+            onOpenPro={(space) => {
+              setProSpace(space);
+              setActiveRoute('pro');
+            }}
+          />
         )}
+
+        {activeRoute === 'organiser' && renderProviderMarketplace(false)}
 
         {activeRoute === 'prestataires' && renderProviderMarketplace(true)}
 
@@ -1262,6 +1121,8 @@ export function App() {
 
         {activeRoute === 'pro' && (
           <ProAdminSpaces
+            key={proSpace}
+            initialSpace={proSpace}
             providers={providers}
             matrix={matrix}
             inquiries={inquiries}
@@ -1290,10 +1151,10 @@ export function App() {
           <div className="flex flex-wrap items-center gap-5">
             <button
               type="button"
-              onClick={() => setActiveRoute('organiser')}
+              onClick={() => setActiveRoute('accueil')}
               className="hover:text-zinc-900 transition-colors"
             >
-              Événements
+              Accueil
             </button>
             <button
               type="button"

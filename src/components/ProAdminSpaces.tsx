@@ -28,6 +28,7 @@ import {
 } from '../data/initialData';
 
 interface ProAdminSpacesProps {
+  initialSpace?: 'prestataire' | 'admin';
   providers: Provider[];
   matrix: EventCategoryMatrix;
   inquiries: ServiceInquiry[];
@@ -75,8 +76,9 @@ export const ProAdminSpaces: React.FC<ProAdminSpacesProps> = ({
   onToggleVerifyProvider,
   onUpdateGiftStock,
   onResolveReport,
+  initialSpace = 'prestataire',
 }) => {
-  const [activeSpace, setActiveSpace] = useState<'prestataire' | 'admin'>('prestataire');
+  const [activeSpace, setActiveSpace] = useState<'prestataire' | 'admin'>(initialSpace);
   const [selectedProviderId, setSelectedProviderId] = useState<string>(providers[0]?.id || '');
   const [adminLog, setAdminLog] = useState<string[]>([
     '11 nov. 2026 · Initialisation de la matrice de filtrage événementiel (9 types d’événements actifs).',
