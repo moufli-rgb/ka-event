@@ -1,0 +1,6 @@
+{
+  "name": "KoraFête — Services Événementiels & Boutique Cadeaux",
+  "description": "Plateforme visuelle de préparation d'événements, filtrage intelligent de prestataires, comparateur transparent, estimation budgétaire et boutique de cadeaux.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
