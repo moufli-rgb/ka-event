@@ -265,7 +265,7 @@ export const BudgetPlannerView: React.FC<BudgetPlannerViewProps> = ({
                   type="text"
                   value={project.city}
                   onChange={(e) => onUpdateProject({ city: e.target.value })}
-                  placeholder="Ex: Abidjan, Cocody"
+                  placeholder="Ex : Cotonou, Fidjrossè"
                   className="w-full px-3 py-2 text-sm border border-stone-300 rounded-lg focus:outline-none focus:border-emerald-800"
                 />
               </div>

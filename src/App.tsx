@@ -24,38 +24,46 @@ import {
   EventCategoryMatrix,
   EventProject,
   EventTypeId,
-  GiftCartItem,
-  GiftOrder,
-  GiftProduct,
-  ModerationReport,
   ProjectBudgetItem,
   Provider,
-  RelevanceLevel,
   ServiceInquiry,
-  ServicePackage,
-  SubscriptionPlanId,
 } from './types';
 import {
   BILLING_MODE_LABELS,
   EVENT_TYPES,
   INITIAL_EVENT_CATEGORY_MATRIX,
-  INITIAL_GIFTS,
-  INITIAL_PROVIDERS,
-  INITIAL_REPORTS,
   SERVICE_CATEGORIES,
   formatFcfa,
 } from './data/initialData';
-import { MEDIA } from './assets/mediaRegistry';
 import { SafeImage } from './components/SafeImage';
 import { ProviderDetailModal } from './components/ProviderDetailModal';
 import { ComparatorModal } from './components/ComparatorModal';
 import { BudgetPlannerView } from './components/BudgetPlannerView';
 import { KaGiftView } from './components/KaGiftView';
 import { BottomTabBar, InstallAppBanner } from './components/MobileApp';
-import { ProAdminSpaces } from './components/ProAdminSpaces';
+import { ProviderSpace } from './components/pro/ProviderSpace';
+import { AdminSpace } from './components/pro/AdminSpace';
+import { useAuth } from './lib/useAuth';
+import {
+  addReview,
+  fetchPublicProviders,
+  frError,
+  isSupabaseConfigured,
+  reportProvider,
+  sendInquiry,
+} from './lib/supabase';
 import { HomeView, StartPlanningPayload } from './components/HomeView';
 
-type ActiveRoute = 'accueil' | 'organiser' | 'prestataires' | 'cadeaux' | 'budget' | 'pro';
+type ActiveRoute = 'accueil' | 'organiser' | 'prestataires' | 'cadeaux' | 'budget' | 'pro' | 'admin';
+const ROUTES: ActiveRoute[] = ['accueil', 'organiser', 'prestataires', 'cadeaux', 'budget', 'pro', 'admin'];
+
+/** Lit la page demandée dans l'adresse (#cadeaux, #pro, ?espace=pro après un e-mail…). */
+const routeFromLocation = (): ActiveRoute => {
+  const q = new URLSearchParams(window.location.search).get('espace');
+  if (q === 'pro' || q === 'admin') return q;
+  const h = window.location.hash.replace('#', '') as ActiveRoute;
+  return ROUTES.includes(h) ? h : 'accueil';
+};
 
 export const NAV_ITEMS = [
   { id: 'accueil' as const, label: 'Accueil', icon: Home },
@@ -65,63 +73,59 @@ export const NAV_ITEMS = [
   { id: 'pro' as const, label: 'Espace pro', icon: Briefcase },
 ];
 
-const STORAGE_PROJECT_KEY = 'korafete_event_project_v1';
-const STORAGE_FAV_KEY = 'korafete_favorites_v1';
+const STORAGE_PROJECT_KEY = 'korafete_event_project_v2';
+const STORAGE_FAV_KEY = 'korafete_favorites_v2';
+const STORAGE_INQ_KEY = 'korafete_my_inquiries_v1';
 
 const DEFAULT_PROJECT: EventProject = {
-  title: 'Notre Célébration 2026',
-  eventTypeId: 'mariage',
-  eventDate: '2026-12-05',
-  city: 'Abidjan',
-  guestCount: 150,
-  targetBudgetFcfa: 3500000,
+  title: 'Mon événement',
+  eventTypeId: null,
+  eventDate: '',
+  city: '',
+  guestCount: 100,
+  targetBudgetFcfa: 1000000,
   preferences: '',
   customAddedCategories: [],
   dismissedCategories: [],
-  showFullCatalog: false,
-  items: [
-    {
-      id: 'bgt-seed-1',
-      providerId: 'prov-pavillon-ebene',
-      providerName: 'Le Pavillon d’Ébène & Jardins',
-      categoryId: 'salles',
-      packageId: 'pkg-ebene-journee',
-      packageTitle: 'Location Salle Vitrée + Jardin (Forfait 12h)',
-      billingMode: 'forfait',
-      unitPriceFcfa: 1200000,
-      unitLabel: 'forfait 12 heures',
-      quantity: 1,
-      selectedOptionIds: [],
-      optionsTotalFcfa: 0,
-      declaredExtraFeeFcfa: 0,
-      discountPercent: 0,
-      status: 'devis_confirme',
-      createdAt: '2026-11-10T10:00:00.000Z',
-    },
-    {
-      id: 'bgt-seed-2',
-      providerId: 'prov-saveurs-kora',
-      providerName: 'Maison Kora Gastronomie',
-      categoryId: 'traiteurs',
-      packageId: 'pkg-kora-prestige',
-      packageTitle: 'Buffet Gala & Mariage "Saveurs d’Ivoire"',
-      billingMode: 'personne',
-      unitPriceFcfa: 14500,
-      unitLabel: 'par personne',
-      quantity: 150,
-      selectedOptionIds: [],
-      optionsTotalFcfa: 0,
-      declaredExtraFeeFcfa: 0,
-      discountPercent: 0,
-      status: 'estimation',
-      createdAt: '2026-11-10T10:05:00.000Z',
-    },
-  ],
+  showFullCatalog: true,
+  items: [],
 };
 
+function usePersistentState<T>(key: string, initial: T) {
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) return JSON.parse(raw) as T;
+    } catch {
+      /* stockage indisponible */
+    }
+    return initial;
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      /* stockage indisponible */
+    }
+  }, [key, value]);
+  return [value, setValue] as const;
+}
+
 export function App() {
-  const [activeRoute, setActiveRoute] = useState<ActiveRoute>('accueil');
-  const [proSpace, setProSpace] = useState<'prestataire' | 'admin'>('prestataire');
+  const [activeRoute, setActiveRouteState] = useState<ActiveRoute>(routeFromLocation);
+  const auth = useAuth();
+
+  const setActiveRoute = (r: ActiveRoute) => {
+    setActiveRouteState(r);
+    const url = r === 'accueil' ? window.location.pathname : `${window.location.pathname}#${r}`;
+    window.history.pushState(null, '', url);
+  };
+
+  useEffect(() => {
+    const onPop = () => setActiveRouteState(routeFromLocation());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -130,49 +134,31 @@ export function App() {
   const [selectionDrawerOpen, setSelectionDrawerOpen] = useState(false);
   const [legalModalOpen, setLegalModalOpen] = useState(false);
 
-  // Stateful Domain Entities
-  const [providers, setProviders] = useState<Provider[]>(INITIAL_PROVIDERS);
-  const [matrix, setMatrix] = useState<EventCategoryMatrix>(INITIAL_EVENT_CATEGORY_MATRIX);
-  const [gifts, setGifts] = useState<GiftProduct[]>(INITIAL_GIFTS);
-  const [reports, setReports] = useState<ModerationReport[]>(INITIAL_REPORTS);
+  // Données publiques (Supabase)
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(isSupabaseConfigured);
+  const [providersError, setProvidersError] = useState<string | null>(null);
+  const [matrix] = useState<EventCategoryMatrix>(INITIAL_EVENT_CATEGORY_MATRIX);
 
-  // Persisted Client Project
-  const [project, setProject] = useState<EventProject>(() => {
+  const loadProviders = async () => {
     try {
-      const raw = localStorage.getItem(STORAGE_PROJECT_KEY);
-      if (raw) return JSON.parse(raw) as EventProject;
-    } catch {
-      // ignore storage errors
+      setProviders(await fetchPublicProviders());
+      setProvidersError(null);
+    } catch (err) {
+      setProvidersError(frError(err));
+    } finally {
+      setProvidersLoading(false);
     }
-    return DEFAULT_PROJECT;
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_PROJECT_KEY, JSON.stringify(project));
-    } catch {
-      // ignore storage errors
-    }
-  }, [project]);
-
-  // Favorites
-  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_FAV_KEY);
-      if (raw) return JSON.parse(raw) as string[];
-    } catch {
-      // ignore
-    }
-    return ['prov-pavillon-ebene', 'prov-atelier-vanille'];
-  });
+  };
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_FAV_KEY, JSON.stringify(favoriteIds));
-    } catch {
-      // ignore
-    }
-  }, [favoriteIds]);
+    loadProviders();
+  }, []);
+
+  // Données du client, gardées sur son appareil
+  const [project, setProject] = usePersistentState<EventProject>(STORAGE_PROJECT_KEY, DEFAULT_PROJECT);
+  const [favoriteIds, setFavoriteIds] = usePersistentState<string[]>(STORAGE_FAV_KEY, []);
+  const [inquiries, setInquiries] = usePersistentState<ServiceInquiry[]>(STORAGE_INQ_KEY, []);
 
   // Filtering & Discovery States
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<CategoryId | 'toutes'>('toutes');
@@ -182,34 +168,10 @@ export function App() {
   const [sortBy, setSortBy] = useState<'pertinence' | 'prix_asc' | 'avis_desc'>('pertinence');
 
   // Comparator & Active Vitrine Modal
-  const [compareIds, setCompareIds] = useState<string[]>(['prov-pavillon-ebene', 'prov-villa-almadies']);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
   const [comparatorOpen, setComparatorOpen] = useState(false);
   const [selectedProviderModalId, setSelectedProviderModalId] = useState<string | null>(null);
 
-  // Inquiries & Gift Cart / Orders
-  const [inquiries, setInquiries] = useState<ServiceInquiry[]>([
-    {
-      id: 'inq-init-1',
-      reference: 'DEV-2026-841',
-      providerId: 'prov-pavillon-ebene',
-      providerName: 'Le Pavillon d’Ébène & Jardins',
-      packageTitle: 'Location Salle Vitrée + Jardin (Forfait 12h)',
-      clientName: 'Aïcha & Cédric',
-      clientPhone: '+225 07 59 11 22 33',
-      eventDate: '2026-12-05',
-      guestCount: 150,
-      message: 'Souhaitons visiter la salle ce samedi à 15h et confirmer l’option sécurité parking.',
-      estimatedTotalFcfa: 1200000,
-      isSurDevis: false,
-      type: 'reservation',
-      status: 'Disponibilité confirmée',
-      providerReply: 'Date du 5 décembre bloquée en option pour 72h. Visite confirmée samedi à 15h !',
-      createdAt: '2026-11-09T14:20:00Z',
-    },
-  ]);
-
-  const [giftCart, setGiftCart] = useState<GiftCartItem[]>([]);
-  const [giftOrders, setGiftOrders] = useState<GiftOrder[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -443,146 +405,21 @@ export function App() {
   const handleSendInquiry = (
     payload: Omit<ServiceInquiry, 'id' | 'reference' | 'createdAt' | 'status'>
   ) => {
-    const newInquiry: ServiceInquiry = {
-      ...payload,
-      id: `inq-${Date.now()}`,
-      reference: `DEV-2026-${Math.floor(100 + Math.random() * 899)}`,
-      status: 'En attente de réponse',
-      createdAt: new Date().toISOString(),
-    };
-    setInquiries((prev) => [newInquiry, ...prev]);
+    sendInquiry(payload)
+      .then((saved) => setInquiries((prev) => [saved, ...prev]))
+      .catch((err) => showToast(`Demande non envoyée : ${frError(err)}`));
   };
 
-  const handleAddReview = (
-    providerId: string,
-    review: Omit<ClientReview, 'id' | 'dateLabel'>
-  ) => {
-    const newRev: ClientReview = {
-      ...review,
-      id: `rev-${Date.now()}`,
-      dateLabel: 'Novembre 2026',
-    };
-    setProviders((prev) =>
-      prev.map((p) => (p.id === providerId ? { ...p, Reviews: [newRev, ...p.Reviews] } : p))
-    );
+  const handleAddReview = (providerId: string, review: Omit<ClientReview, 'id' | 'dateLabel'>) => {
+    addReview(providerId, review)
+      .then(loadProviders)
+      .catch((err) => showToast(`Avis non publié : ${frError(err)}`));
   };
 
   const handleReportProvider = (targetName: string, reason: string) => {
-    setReports((prev) => [
-      {
-        id: `rep-${Date.now()}`,
-        targetName,
-        reason,
-        reporterName: 'Signalement Utilisateur',
-        date: '11 nov. 2026',
-        status: 'Ouvert',
-      },
-      ...prev,
-    ]);
-  };
-
-  // Gift Cart & Order Handlers
-  const handleAddGiftToCart = (item: GiftCartItem) => {
-    setGiftCart((prev) => [...prev, item]);
-  };
-
-  const handleUpdateGiftQty = (id: string, delta: number) => {
-    setGiftCart((prev) =>
-      prev
-        .map((it) => (it.id === id ? { ...it, quantity: it.quantity + delta } : it))
-        .filter((it) => it.quantity > 0)
-    );
-  };
-
-  const handleRemoveGiftCartItem = (id: string) => {
-    setGiftCart((prev) => prev.filter((it) => it.id !== id));
-  };
-
-  const handlePlaceGiftOrder = (
-    payload: Omit<GiftOrder, 'id' | 'orderNumber' | 'createdAt' | 'status'>
-  ) => {
-    const orderNumber = `KF-${Math.floor(1020 + Math.random() * 8900)}`;
-    const newOrder: GiftOrder = {
-      ...payload,
-      id: `ord-${Date.now()}`,
-      orderNumber,
-      createdAt: new Date().toISOString(),
-      status: 'Confirmée — En préparation',
-    };
-    setGiftOrders((prev) => [newOrder, ...prev]);
-    // Decrement stocks
-    setGifts((prev) =>
-      prev.map((g) => {
-        const bought = payload.items
-          .filter((i) => i.gift.id === g.id)
-          .reduce((a, b) => a + b.quantity, 0);
-        return bought > 0 ? { ...g, stock: Math.max(0, g.stock - bought) } : g;
-      })
-    );
-    setGiftCart([]);
-    showToast(`Commande #${orderNumber} validée ! Préparation en cours.`);
-  };
-
-  // Pro & Admin Handlers
-  const handleAddPackageToProvider = (providerId: string, pkg: ServicePackage) => {
-    setProviders((prev) =>
-      prev.map((p) => (p.id === providerId ? { ...p, packages: [...p.packages, pkg] } : p))
-    );
-  };
-
-  const handleUpdateProviderSubscription = (providerId: string, plan: SubscriptionPlanId) => {
-    setProviders((prev) =>
-      prev.map((p) =>
-        p.id === providerId
-          ? { ...p, subscriptionPlan: plan, sponsored: plan === 'prestige' }
-          : p
-      )
-    );
-  };
-
-  const handleReplyToInquiry = (
-    inquiryId: string,
-    status: ServiceInquiry['status'],
-    reply: string
-  ) => {
-    setInquiries((prev) =>
-      prev.map((inq) =>
-        inq.id === inquiryId ? { ...inq, status, providerReply: reply } : inq
-      )
-    );
-  };
-
-  const handleUpdateMatrixCell = (
-    eventId: EventTypeId,
-    categoryId: CategoryId,
-    nextLevel: RelevanceLevel
-  ) => {
-    setMatrix((prev) => ({
-      ...prev,
-      [eventId]: {
-        ...prev[eventId],
-        [categoryId]: nextLevel,
-      },
-    }));
-  };
-
-  const handleToggleVerifyProvider = (providerId: string) => {
-    setProviders((prev) =>
-      prev.map((p) =>
-        p.id === providerId ? { ...p, verifiedProfile: !p.verifiedProfile } : p
-      )
-    );
-  };
-
-  const handleUpdateGiftStock = (giftId: string, nextStock: number) => {
-    setGifts((prev) =>
-      prev.map((g) => (g.id === giftId ? { ...g, stock: nextStock } : g))
-    );
-  };
-
-  const handleResolveReport = (reportId: string) => {
-    setReports((prev) =>
-      prev.map((r) => (r.id === reportId ? { ...r, status: 'Résolu' } : r))
+    const prov = providers.find((p) => p.businessName === targetName);
+    reportProvider(prov?.id ?? null, targetName, reason).catch((err) =>
+      showToast(`Signalement non envoyé : ${frError(err)}`)
     );
   };
 
@@ -596,8 +433,7 @@ export function App() {
     [providers, compareIds]
   );
 
-  const totalSelectionCount =
-    project.items.length + giftCart.reduce((acc, it) => acc + it.quantity, 0);
+  const totalSelectionCount = project.items.length;
 
   const budgetTotalPreview = useMemo(() => {
     return project.items.reduce((acc, item) => {
@@ -782,11 +618,13 @@ export function App() {
                 className="w-full px-3 py-2 text-xs sm:text-sm bg-[#FAF9F6] border border-stone-200 rounded-lg"
               >
                 <option value="Toutes les villes">Toutes les villes</option>
-                <option value="Abidjan">Abidjan</option>
-                <option value="Dakar">Dakar</option>
-                <option value="Cotonou">Cotonou</option>
-                <option value="Douala">Douala</option>
-                <option value="Lomé">Lomé</option>
+                {Array.from(new Set(providers.map((p) => p.city.trim()).filter(Boolean)))
+                  .sort((a, b) => a.localeCompare(b, 'fr'))
+                  .map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -821,8 +659,44 @@ export function App() {
         </div>
       </div>
 
-      {/* 3-Column Provider Cards Grid */}
-      {filteredProviders.length === 0 ? (
+      {/* Grille des prestataires */}
+      {providersLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-xl bg-white border border-stone-200 overflow-hidden animate-pulse">
+              <div className="aspect-[4/3] bg-stone-200" />
+              <div className="p-6 space-y-3">
+                <div className="h-3 w-1/3 bg-stone-200 rounded" />
+                <div className="h-5 w-2/3 bg-stone-200 rounded" />
+                <div className="h-3 w-full bg-stone-100 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : providers.length === 0 ? (
+        <div className="p-10 sm:p-14 rounded-2xl bg-white border border-stone-200 text-center space-y-4">
+          <Briefcase className="w-9 h-9 text-emerald-800 mx-auto" />
+          <h3 className="text-xl font-semibold text-zinc-900">
+            {providersError ? 'Impossible de charger les prestataires' : 'Les premiers prestataires arrivent bientôt'}
+          </h3>
+          <p className="text-sm text-stone-600 max-w-md mx-auto">
+            {providersError
+              ? providersError
+              : !isSupabaseConfigured
+                ? 'La base de données n’est pas encore branchée.'
+                : 'Vous êtes traiteur, décorateur, photographe, propriétaire de salle… ? Créez votre profil gratuitement et soyez visible dès aujourd’hui.'}
+          </p>
+          {!providersError && (
+            <button
+              type="button"
+              onClick={() => setActiveRoute('pro')}
+              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold bg-[#065F46] text-white rounded-full hover:bg-[#064E3B]"
+            >
+              Je suis prestataire <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      ) : filteredProviders.length === 0 ? (
         <div className="p-12 rounded-xl bg-white border border-stone-200 text-center space-y-3">
           <SlidersHorizontal className="w-7 h-7 text-stone-400 mx-auto" />
           <h3 className="text-lg font-semibold text-zinc-900">
@@ -982,6 +856,31 @@ export function App() {
     </section>
   );
 
+  // Espaces séparés : prestataire et administration (sans le menu du site client)
+  if (activeRoute === 'pro') {
+    return (
+      <ProviderSpace
+        auth={auth}
+        onBackToSite={() => {
+          setActiveRoute('accueil');
+          loadProviders();
+        }}
+        onOpenAdmin={() => setActiveRoute('admin')}
+      />
+    );
+  }
+  if (activeRoute === 'admin') {
+    return (
+      <AdminSpace
+        auth={auth}
+        onBackToSite={() => {
+          setActiveRoute('accueil');
+          loadProviders();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF9F6] text-zinc-900">
       {/* Barre du haut */}
@@ -1088,10 +987,7 @@ export function App() {
             onStartPlanning={handleStartPlanning}
             onGoGifts={() => setActiveRoute('cadeaux')}
             onGoProviders={handleBrowseAllProviders}
-            onOpenPro={(space) => {
-              setProSpace(space);
-              setActiveRoute('pro');
-            }}
+            onOpenPro={(space) => setActiveRoute(space === 'admin' ? 'admin' : 'pro')}
           />
         )}
 
@@ -1116,24 +1012,6 @@ export function App() {
           />
         )}
 
-        {activeRoute === 'pro' && (
-          <ProAdminSpaces
-            key={proSpace}
-            initialSpace={proSpace}
-            providers={providers}
-            matrix={matrix}
-            inquiries={inquiries}
-            gifts={gifts}
-            reports={reports}
-            onAddPackageToProvider={handleAddPackageToProvider}
-            onUpdateProviderSubscription={handleUpdateProviderSubscription}
-            onReplyToInquiry={handleReplyToInquiry}
-            onUpdateMatrixCell={handleUpdateMatrixCell}
-            onToggleVerifyProvider={handleToggleVerifyProvider}
-            onUpdateGiftStock={handleUpdateGiftStock}
-            onResolveReport={handleResolveReport}
-          />
-        )}
         </motion.div>
         </AnimatePresence>
       </main>
@@ -1168,6 +1046,20 @@ export function App() {
               className="hover:text-zinc-900 transition-colors"
             >
               Comparateur ({compareIds.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveRoute('pro')}
+              className="hover:text-zinc-900 transition-colors font-semibold"
+            >
+              Espace prestataire
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveRoute('admin')}
+              className="hover:text-zinc-900 transition-colors"
+            >
+              Administration
             </button>
             <button
               type="button"
@@ -1289,39 +1181,19 @@ export function App() {
                 </button>
               </div>
 
-              {/* Gift Cart Summary */}
+              {/* Cadeaux Kā */}
               <div className="pt-5 border-t border-stone-200 space-y-3">
-                <h3 className="text-sm font-semibold text-zinc-900">
-                  Panier Boutique Cadeaux ({giftCart.reduce((a, b) => a + b.quantity, 0)})
-                </h3>
-                {giftCart.length === 0 ? (
-                  <p className="text-xs text-stone-500">Aucun coffret cadeau dans le panier.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {giftCart.map((gc) => (
-                      <div
-                        key={gc.id}
-                        className="p-3 rounded-lg bg-[#FAF9F6] border border-stone-200 flex items-center justify-between text-xs"
-                      >
-                        <span>
-                          {gc.gift.name} (×{gc.quantity})
-                        </span>
-                        <span className="font-semibold tabular-nums">
-                          {formatFcfa((gc.gift.priceFcfa + gc.wrappingFeeFcfa) * gc.quantity)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <h3 className="text-sm font-semibold text-zinc-900">Un cadeau à offrir ?</h3>
+                <p className="text-xs text-stone-500">Composez une calebasse cadeau Kā, validée sur WhatsApp.</p>
                 <button
                   type="button"
                   onClick={() => {
                     setSelectionDrawerOpen(false);
                     setActiveRoute('cadeaux');
                   }}
-                  className="w-full py-2.5 px-4 text-xs font-semibold bg-[#065F46] text-white rounded-lg hover:bg-[#064E3B]"
+                  className="w-full py-2.5 px-4 text-xs font-semibold bg-[#344B31] text-[#F4F2EC] rounded-lg hover:opacity-90"
                 >
-                  Accéder à la Boutique Cadeaux
+                  Faire ma Kā
                 </button>
               </div>
             </div>

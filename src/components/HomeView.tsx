@@ -542,15 +542,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {
               icon: Briefcase,
               title: 'Prestataire',
-              text: `Créez votre profil, publiez vos prestations et tarifs, répondez aux demandes. ${providerCount} pros déjà inscrits.`,
-              cta: 'Accéder à mon espace pro',
+              text: `Créez votre compte, publiez vos prestations et vos prix, répondez aux demandes. ${
+                providerCount > 0
+                  ? `${providerCount} prestataire${providerCount > 1 ? 's' : ''} déjà inscrit${providerCount > 1 ? 's' : ''}.`
+                  : 'Soyez parmi les premiers inscrits.'
+              }`,
+              cta: 'Me connecter / m’inscrire',
               onClick: () => onOpenPro('prestataire'),
               tone: 'bg-amber-50 text-amber-900',
             },
             {
               icon: ShieldCheck,
               title: 'Administrateur',
-              text: 'Vérifiez les profils, modérez les signalements et gérez la boutique cadeaux.',
+              text: 'Vérifiez les prestataires inscrits et traitez les signalements.',
               cta: 'Console d’administration',
               onClick: () => onOpenPro('admin'),
               tone: 'bg-stone-100 text-zinc-800',
